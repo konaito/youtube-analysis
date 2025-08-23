@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '../lib/auth/AuthProvider';
+import { useState, useEffect } from 'react';
+import { auth } from '../lib/auth/client';
 import DownloadHistory from '../components/DownloadHistory';
 
 export default function Home() {
@@ -9,7 +9,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [refreshHistory, setRefreshHistory] = useState(0);
-  const { loading: authLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,18 +43,6 @@ export default function Home() {
       setLoading(false);
     }
   };
-
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">読み込み中...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 dark:from-gray-900 dark:to-gray-800">
