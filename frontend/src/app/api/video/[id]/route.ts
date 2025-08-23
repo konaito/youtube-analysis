@@ -3,9 +3,10 @@ import { createClient } from '../../../../lib/supabase/server';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  props: RouteContext<'/api/video/[id]'>
 ) {
   try {
+    const { id } = await props.params;
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
@@ -19,7 +20,7 @@ export async function GET(
     const { data: video, error } = await supabase
       .from('download_logs')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single();
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/auth/AuthProvider';
 
 interface DownloadLog {
@@ -17,8 +17,7 @@ interface DownloadLog {
   downloaded_at: string;
 }
 
-export default function VideoPage() {
-  const params = useParams();
+export default function VideoPage(props: PageProps<'/videos/[id]'>) {
   const router = useRouter();
   const { loading: authLoading } = useAuth();
   const [video, setVideo] = useState<DownloadLog | null>(null);
@@ -27,10 +26,12 @@ export default function VideoPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (params.id) {
-      fetchVideo(params.id as string);
-    }
-  }, [params.id]);
+    const initializePage = async () => {
+      const { id } = await props.params;
+      fetchVideo(id);
+    };
+    initializePage();
+  }, [props.params]);
 
   const fetchVideo = async (id: string) => {
     try {
@@ -85,7 +86,8 @@ export default function VideoPage() {
       document.body.removeChild(a);
 
       // ダウンロード後に動画情報を更新
-      fetchVideo(params.id as string);
+      const { id } = await props.params;
+      fetchVideo(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ダウンロードに失敗しました');
     } finally {

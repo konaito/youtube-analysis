@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         
         const chunks: Buffer[] = [];
         
-        return new Promise((resolve) => {
+        return new Promise<NextResponse>((resolve) => {
           stream.on('data', (chunk) => {
             chunks.push(chunk);
           });
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
         
         const chunks: Buffer[] = [];
         
-        return new Promise((resolve) => {
+        return new Promise<NextResponse>((resolve) => {
           stream.on('data', (chunk) => {
             chunks.push(chunk);
           });
