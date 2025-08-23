@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../lib/auth/AuthProvider';
+import { auth } from '../../../lib/auth/client';
 
 interface DownloadLog {
   id: string;
@@ -19,7 +19,6 @@ interface DownloadLog {
 
 export default function VideoPage(props: PageProps<'/videos/[id]'>) {
   const router = useRouter();
-  const { loading: authLoading } = useAuth();
   const [video, setVideo] = useState<DownloadLog | null>(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -127,7 +126,7 @@ export default function VideoPage(props: PageProps<'/videos/[id]'>) {
     );
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">

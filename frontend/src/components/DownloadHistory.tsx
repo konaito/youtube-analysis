@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import * as auth from '../lib/auth/client';
 
 interface DownloadLog {
   id: string;
@@ -24,7 +25,7 @@ export default function DownloadHistory() {
 
   useEffect(() => {
     fetchHistory();
-  }, []); // 常に表示するので初回読み込み
+  }, []);
 
   const fetchHistory = async () => {
     try {
