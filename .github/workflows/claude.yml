@@ -53,10 +53,13 @@ jobs:
           # allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
           
           # Optional: Add custom instructions for Claude to customize its behavior for your project
-          # custom_instructions: |
-          #   Follow our coding standards
-          #   Ensure all new code has tests
-          #   Use TypeScript for new files
+          custom_instructions: |
+            プロジェクト固有の指示：
+            - コーディング標準に従ってください
+            - 新しいコードにはテストを追加してください
+            - 新しいファイルはTypeScriptを使用してください
+            - 日本語で回答してください
+            - Next.js 15.5とSupabaseのベストプラクティスに従ってください
           
           # Optional: Custom environment variables for Claude
           # claude_env: |
