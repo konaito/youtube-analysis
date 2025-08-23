@@ -62,8 +62,11 @@ export default function Home() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-4xl font-bold text-center mb-8 text-red-600 dark:text-red-400">
-            YouTube ダウンローダー
+            YouTube 動画ダウンローダー
           </h1>
+          <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
+            最も低画質のMP4形式で動画をダウンロードできます
+          </p>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
