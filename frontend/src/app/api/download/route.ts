@@ -13,9 +13,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['mp4', 'mp3'].includes(format)) {
+    if (format !== 'mp4') {
       return NextResponse.json(
-        { error: 'Invalid format. Only mp4 and mp3 are supported' },
+        { error: 'Invalid format. Only mp4 is supported' },
         { status: 400 }
       );
     }
@@ -87,115 +87,60 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      if (format === 'mp4') {
-        const stream = ytdl(url, { 
-          quality: 'highestvideo',
-          filter: 'videoandaudio'
+      // Always use lowest quality video with audio
+      const stream = ytdl(url, { 
+        quality: 'lowestvideo',
+        filter: 'videoandaudio'
+      });
+        
+      const chunks: Buffer[] = [];
+      
+      return new Promise<NextResponse>((resolve) => {
+        stream.on('data', (chunk) => {
+          chunks.push(chunk);
         });
         
-        const chunks: Buffer[] = [];
-        
-        return new Promise<NextResponse>((resolve) => {
-          stream.on('data', (chunk) => {
-            chunks.push(chunk);
-          });
+        stream.on('end', async () => {
+          const buffer = Buffer.concat(chunks);
           
-          stream.on('end', async () => {
-            const buffer = Buffer.concat(chunks);
-            
-            // ダウンロード完了をログに記録
-            if (downloadLog) {
-              await supabase
-                .from('download_logs')
-                .update({
-                  download_status: 'completed',
-                  file_size_bytes: buffer.length
-                })
-                .eq('id', downloadLog.id);
-            }
-            
-            const headers = new Headers();
-            headers.set('Content-Type', 'video/mp4');
-            headers.set('Content-Disposition', `attachment; filename="${title}.mp4"`);
-            
-            resolve(new NextResponse(buffer, {
-              status: 200,
-              headers,
-            }));
-          });
+          // ダウンロード完了をログに記録
+          if (downloadLog) {
+            await supabase
+              .from('download_logs')
+              .update({
+                download_status: 'completed',
+                file_size_bytes: buffer.length
+              })
+              .eq('id', downloadLog.id);
+          }
           
-          stream.on('error', async (error) => {
-            console.error('Stream error:', error);
-            
-            // エラー時のログ更新
-            if (downloadLog) {
-              await supabase
-                .from('download_logs')
-                .update({ download_status: 'failed' })
-                .eq('id', downloadLog.id);
-            }
-            
-            resolve(NextResponse.json(
-              { error: 'ダウンロードに失敗しました' },
-              { status: 500 }
-            ));
-          });
-        });
-      } else {
-        const stream = ytdl(url, { 
-          quality: 'highestaudio',
-          filter: 'audioonly'
+          const headers = new Headers();
+          headers.set('Content-Type', 'video/mp4');
+          headers.set('Content-Disposition', `attachment; filename="${title}.mp4"`);
+          
+          resolve(new NextResponse(buffer, {
+            status: 200,
+            headers,
+          }));
         });
         
-        const chunks: Buffer[] = [];
-        
-        return new Promise<NextResponse>((resolve) => {
-          stream.on('data', (chunk) => {
-            chunks.push(chunk);
-          });
+        stream.on('error', async (error) => {
+          console.error('Stream error:', error);
           
-          stream.on('end', async () => {
-            const buffer = Buffer.concat(chunks);
-            
-            // ダウンロード完了をログに記録
-            if (downloadLog) {
-              await supabase
-                .from('download_logs')
-                .update({
-                  download_status: 'completed',
-                  file_size_bytes: buffer.length
-                })
-                .eq('id', downloadLog.id);
-            }
-            
-            const headers = new Headers();
-            headers.set('Content-Type', 'audio/webm');
-            headers.set('Content-Disposition', `attachment; filename="${title}.webm"`);
-            
-            resolve(new NextResponse(buffer, {
-              status: 200,
-              headers,
-            }));
-          });
+          // エラー時のログ更新
+          if (downloadLog) {
+            await supabase
+              .from('download_logs')
+              .update({ download_status: 'failed' })
+              .eq('id', downloadLog.id);
+          }
           
-          stream.on('error', async (error) => {
-            console.error('Stream error:', error);
-            
-            // エラー時のログ更新
-            if (downloadLog) {
-              await supabase
-                .from('download_logs')
-                .update({ download_status: 'failed' })
-                .eq('id', downloadLog.id);
-            }
-            
-            resolve(NextResponse.json(
-              { error: 'ダウンロードに失敗しました' },
-              { status: 500 }
-            ));
-          });
+          resolve(NextResponse.json(
+            { error: 'ダウンロードに失敗しました' },
+            { status: 500 }
+          ));
         });
-      }
+      });
     } catch (error) {
       console.error('Download error:', error);
       return NextResponse.json(

@@ -51,7 +51,7 @@ export default function VideoPage(props: PageProps<'/videos/[id]'>) {
     }
   };
 
-  const handleDownload = async (format: 'mp4' | 'mp3') => {
+  const handleDownload = async () => {
     if (!video) return;
 
     setDownloading(true);
@@ -65,7 +65,7 @@ export default function VideoPage(props: PageProps<'/videos/[id]'>) {
         },
         body: JSON.stringify({ 
           url: `https://www.youtube.com/watch?v=${video.video_id}`,
-          format,
+          format: 'mp4',
           logId: video.id
         }),
       });
@@ -79,7 +79,7 @@ export default function VideoPage(props: PageProps<'/videos/[id]'>) {
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = downloadUrl;
-      a.download = `${video.video_title}.${format}`;
+      a.download = `${video.video_title}.mp4`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(downloadUrl);
@@ -206,20 +206,13 @@ export default function VideoPage(props: PageProps<'/videos/[id]'>) {
                   </div>
                 )}
 
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex justify-center">
                   <button
-                    onClick={() => handleDownload('mp4')}
+                    onClick={handleDownload}
                     disabled={downloading}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-6 rounded-md transition-colors"
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-8 rounded-md transition-colors"
                   >
-                    {downloading ? '処理中...' : 'MP4でダウンロード'}
-                  </button>
-                  <button
-                    onClick={() => handleDownload('mp3')}
-                    disabled={downloading}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium py-3 px-6 rounded-md transition-colors"
-                  >
-                    {downloading ? '処理中...' : 'MP3でダウンロード'}
+                    {downloading ? '処理中...' : '低画質MP4でダウンロード'}
                   </button>
                 </div>
 
