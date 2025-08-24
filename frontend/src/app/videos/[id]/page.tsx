@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth } from '../../../lib/auth/client';
 
 interface DownloadLog {
   id: string;
@@ -15,6 +14,7 @@ interface DownloadLog {
   file_size_bytes: number;
   download_status: string;
   downloaded_at: string;
+  storage_path?: string;
 }
 
 export default function VideoPage(props: PageProps<'/videos/[id]'>) {
@@ -51,42 +51,40 @@ export default function VideoPage(props: PageProps<'/videos/[id]'>) {
   };
 
   const handleDownload = async () => {
-    if (!video) return;
+    if (!video || !video.storage_path) {
+      setError('動画ファイルが見つかりません');
+      return;
+    }
 
     setDownloading(true);
     setError('');
 
     try {
-      const response = await fetch('/api/download', {
+      // Supabase Storageからダウンロードリンクを取得
+      const response = await fetch('/api/storage-download', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          url: `https://www.youtube.com/watch?v=${video.video_id}`,
-          format: 'mp4',
-          logId: video.id
+          storagePath: video.storage_path
         }),
       });
 
       if (!response.ok) {
-        throw new Error('ダウンロードに失敗しました');
+        throw new Error('ダウンロードリンクの取得に失敗しました');
       }
 
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const { downloadUrl } = await response.json();
+      
+      // ダウンロードを実行
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = downloadUrl;
       a.download = `${video.video_title}.mp4`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(a);
-
-      // ダウンロード後に動画情報を更新
-      const { id } = await props.params;
-      fetchVideo(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ダウンロードに失敗しました');
     } finally {
@@ -206,13 +204,31 @@ export default function VideoPage(props: PageProps<'/videos/[id]'>) {
                 )}
 
                 <div className="flex justify-center">
-                  <button
-                    onClick={handleDownload}
-                    disabled={downloading}
-                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-3 px-8 rounded-md transition-colors"
-                  >
-                    {downloading ? '処理中...' : '低画質MP4でダウンロード'}
-                  </button>
+                  {video.download_status === 'completed' && video.storage_path ? (
+                    <button
+                      onClick={handleDownload}
+                      disabled={downloading}
+                      className="w-full sm:w-auto bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium py-3 px-8 rounded-md transition-colors"
+                    >
+                      {downloading ? 'ダウンロード中...' : 'MP4ダウンロード'}
+                    </button>
+                  ) : video.download_status === 'pending' ? (
+                    <div className="w-full sm:w-auto bg-yellow-100 text-yellow-800 font-medium py-3 px-8 rounded-md text-center">
+                      ダウンロード待機中...
+                    </div>
+                  ) : video.download_status === 'in_progress' ? (
+                    <div className="w-full sm:w-auto bg-blue-100 text-blue-800 font-medium py-3 px-8 rounded-md text-center">
+                      動画処理中...
+                    </div>
+                  ) : video.download_status === 'failed' ? (
+                    <div className="w-full sm:w-auto bg-red-100 text-red-800 font-medium py-3 px-8 rounded-md text-center">
+                      処理に失敗しました
+                    </div>
+                  ) : (
+                    <div className="w-full sm:w-auto bg-gray-100 text-gray-800 font-medium py-3 px-8 rounded-md text-center">
+                      ステータス不明
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">

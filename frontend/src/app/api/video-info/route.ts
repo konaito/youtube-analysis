@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         video_channel: videoDetails.author.name,
         video_duration: duration,
         video_thumbnail_url: videoDetails.thumbnails[0]?.url,
-        download_format: 'mp4', // デフォルト
+        download_format: 'mp4',
         download_status: 'pending'
       })
       .select()
@@ -55,8 +55,14 @@ export async function POST(request: NextRequest) {
 
     if (queueError) {
       console.error('Failed to add to queue:', queueError);
-      // キューの追加に失敗してもvideo-infoは返す
+      return NextResponse.json(
+        { error: 'キューへの追加に失敗しました' },
+        { status: 500 }
+      );
     }
+
+    // バックグラウンドで動画ダウンロードを開始
+    downloadAndStoreVideo(queueItem.id, url, user.id).catch(console.error);
 
     return NextResponse.json({
       id: videoDetails.videoId,
@@ -73,6 +79,87 @@ export async function POST(request: NextRequest) {
       { error: '動画情報の取得に失敗しました' },
       { status: 500 }
     );
+  }
+}
+
+async function downloadAndStoreVideo(logId: string, videoUrl: string, userId: string) {
+  try {
+    const supabase = await createClient();
+    
+    // ステータスを処理中に更新
+    await supabase
+      .from('download_logs')
+      .update({ download_status: 'in_progress' })
+      .eq('id', logId);
+
+    // 最低画質のMP4フォーマットを取得
+    const info = await ytdl.getInfo(videoUrl);
+    const formats = ytdl.filterFormats(info.formats, 'videoandaudio');
+    const lowestQuality = formats.reduce((prev, current) => 
+      (prev.height || 0) < (current.height || 0) ? prev : current
+    );
+
+    if (!lowestQuality) {
+      throw new Error('利用可能なフォーマットが見つかりません');
+    }
+
+    // yt-dlpを使ってダウンロード
+    const videoStream = ytdl(videoUrl, { format: lowestQuality });
+    
+    // ストリームをBufferに変換
+    const chunks: Buffer[] = [];
+    let totalSize = 0;
+    
+    return new Promise<void>((resolve, reject) => {
+      videoStream.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+        totalSize += chunk.length;
+      });
+      
+      videoStream.on('end', async () => {
+        try {
+          const buffer = Buffer.concat(chunks);
+          const fileName = `${userId}/${logId}.mp4`;
+          
+          // Supabase Storageにアップロード
+          const { error: uploadError } = await supabase.storage
+            .from('videos')
+            .upload(fileName, buffer, {
+              contentType: 'video/mp4',
+              upsert: false
+            });
+
+          if (uploadError) {
+            throw uploadError;
+          }
+
+          // データベースを更新
+          await supabase
+            .from('download_logs')
+            .update({
+              download_status: 'completed',
+              file_size_bytes: totalSize,
+              storage_path: fileName
+            })
+            .eq('id', logId);
+
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
+      
+      videoStream.on('error', reject);
+    });
+  } catch (error) {
+    console.error('Download error:', error);
+    
+    // エラー時にステータスを失敗に更新
+    const supabase = await createClient();
+    await supabase
+      .from('download_logs')
+      .update({ download_status: 'failed' })
+      .eq('id', logId);
   }
 }
 

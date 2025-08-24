@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import * as auth from '../lib/auth/client';
 
 interface DownloadLog {
   id: string;
@@ -47,14 +46,6 @@ export default function DownloadHistory() {
 
   const handleRowClick = (videoId: string) => {
     router.push(`/videos/${videoId}`);
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (!bytes) return '不明';
-    
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   const formatDate = (dateString: string): string => {
