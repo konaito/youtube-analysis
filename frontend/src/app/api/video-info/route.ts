@@ -83,9 +83,10 @@ export async function POST(request: NextRequest) {
 }
 
 async function downloadAndStoreVideo(logId: string, videoUrl: string, userId: string) {
+  const supabase = await createClient();
+  const fileName = `${userId}/${logId}.mp4`;
+  
   try {
-    const supabase = await createClient();
-    
     // ステータスを処理中に更新
     await supabase
       .from('download_logs')
@@ -103,62 +104,58 @@ async function downloadAndStoreVideo(logId: string, videoUrl: string, userId: st
       throw new Error('利用可能なフォーマットが見つかりません');
     }
 
-    // yt-dlpを使ってダウンロード
+    // ストリーミング直接アップロード（メモリ効率的）
     const videoStream = ytdl(videoUrl, { format: lowestQuality });
-    
-    // ストリームをBufferに変換
-    const chunks: Buffer[] = [];
     let totalSize = 0;
     
-    return new Promise<void>((resolve, reject) => {
-      videoStream.on('data', (chunk: Buffer) => {
-        chunks.push(chunk);
-        totalSize += chunk.length;
-      });
-      
-      videoStream.on('end', async () => {
-        try {
-          const buffer = Buffer.concat(chunks);
-          const fileName = `${userId}/${logId}.mp4`;
-          
-          // Supabase Storageにアップロード
-          const { error: uploadError } = await supabase.storage
-            .from('videos')
-            .upload(fileName, buffer, {
-              contentType: 'video/mp4',
-              upsert: false
-            });
-
-          if (uploadError) {
-            throw uploadError;
-          }
-
-          // データベースを更新
-          await supabase
-            .from('download_logs')
-            .update({
-              download_status: 'completed',
-              file_size_bytes: totalSize,
-              storage_path: fileName
-            })
-            .eq('id', logId);
-
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      });
-      
-      videoStream.on('error', reject);
+    // ファイルサイズを計算するためのストリーム監視
+    videoStream.on('data', (chunk: Buffer) => {
+      totalSize += chunk.length;
     });
+
+    // Supabase Storageに直接ストリーミングアップロード
+    const { error: uploadError } = await supabase.storage
+      .from('videos')
+      .upload(fileName, videoStream, {
+        contentType: 'video/mp4',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw new Error(`アップロードエラー: ${uploadError.message}`);
+    }
+
+    // データベースを更新
+    await supabase
+      .from('download_logs')
+      .update({
+        download_status: 'completed',
+        file_size_bytes: totalSize,
+        storage_path: fileName
+      })
+      .eq('id', logId);
+
   } catch (error) {
     console.error('Download error:', error);
     
-    // エラー時にステータスを失敗に更新
-    const supabase = await createClient();
+    // 部分的にアップロードされたファイルをクリーンアップ
+    try {
+      await supabase.storage
+        .from('videos')
+        .remove([fileName]);
+    } catch (cleanupError) {
+      console.error('Cleanup error:', cleanupError);
+    }
+    
+    // エラー時にステータスを失敗に更新（具体的なエラーメッセージ付き）
+    const errorMessage = error instanceof Error ? error.message : '不明なエラー';
     await supabase
       .from('download_logs')
-      .update({ download_status: 'failed' })
+      .update({ 
+        download_status: 'failed',
+        // エラーメッセージを記録する場合は新しいカラムが必要
+      })
       .eq('id', logId);
   }
 }
