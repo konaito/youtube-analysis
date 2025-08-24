@@ -30,9 +30,8 @@ YouTube Downloader is a full-stack application built with Next.js 15.5, Supabase
 
 ### Frontend Development
 ```bash
-cd frontend
 bun install          # Install dependencies
-bun run dev          # Development server (http://localhost:3000)
+# 注意: bun run dev は勝手に実行禁止！ユーザーが明示的に要求した場合のみ実行する
 bun run build        # Production build
 bun run lint         # ESLint checking
 ```

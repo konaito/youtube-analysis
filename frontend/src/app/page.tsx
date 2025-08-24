@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { auth } from '../lib/auth/client';
+import { useState } from 'react';
 import DownloadHistory from '../components/DownloadHistory';
 
 export default function Home() {
@@ -30,7 +29,7 @@ export default function Home() {
         throw new Error('動画情報の取得に失敗しました');
       }
 
-      const data = await response.json();
+      await response.json();
       
       // URL入力フィールドをクリア
       setUrl('');
