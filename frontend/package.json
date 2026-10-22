@@ -12,7 +12,7 @@
     "@distube/ytdl-core": "^4.16.12",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.56.0",
-    "next": "15.5.0",
+    "next": "15.5.28",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
@@ -28,5 +28,8 @@
     "playwright": "^1.55.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "sharp": "^0.35.5"
   }
 }
